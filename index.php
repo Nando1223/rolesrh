@@ -3,27 +3,29 @@
 require('fpdf/fpdf.php');
 
 
-function Crear_PDF($ID_rol)
+function Crear_PDF($ID_rol,$carpeta)
 
 {
     include('conexion.php');
-
-
     try {
 
         $pdo = new PDO("sqlsrv:server=$sql_serverName;Database=$sql_database", $sql_user, $sql_pwd);
 
-        $result = $pdo->prepare("select Detalle as Concepto , ID , Fecha  , Ingresos as Ingreso_Total , Egresos as Egreso_Total , Total as Valor_Neto from EMP_ROLES 
-    where ID = '0000034709'");
+        $result = $pdo->prepare("SELECT 
+        Detalle as Concepto , 
+        ID, 
+        Fecha , 
+        Ingresos as Ingreso_Total, 
+        Egresos as Egreso_Total, 
+        Total as Valor_Neto 
+        from EMP_ROLES 
+        where ID = :ID_Rol");
 
-        // $result->bindParam(':ID_Rol', $ID_rol);
+        $result->bindParam(':ID_Rol', $ID_rol);
+
         $result->execute();
         $data = $result->fetchAll(PDO::FETCH_ASSOC);
-
-
-        $result2 = $pdo->prepare("
-
-        SELECT
+        $result2 = $pdo->prepare("SELECT
         rr.DocumentoID,
         rr.Tipo as Clase,
         rub.Nombre as Detalle,
@@ -35,11 +37,10 @@ function Crear_PDF($ID_rol)
         FROM EMP_ROLES_RUBROS rr
         JOIN EMP_RUBROS rub ON rr.RubroID = rub.ID
         LEFT JOIN EMP_EMPLEADOS_DEUDAS de ON de.ID = rr.DocumentoID
-        WHERE rr.RolID = '0000034709' AND rr.Tipo <> 'Provision'
+        WHERE rr.RolID = :ID_Rol AND rr.Tipo <> 'Provision'
         ORDER BY LEN(Detalle) ASC, Ingreso DESC, Egreso ASC");
 
-
-        // $result->bindParam(':ID_Rol', $ID_rol);
+        $result2->bindParam(':ID_Rol', $ID_rol);
         $result2->execute();
         $cuerpo = $result2->fetchAll(PDO::FETCH_ASSOC);
 
@@ -150,7 +151,7 @@ function Crear_PDF($ID_rol)
 
         date_default_timezone_set('America/Guayaquil');
         $dateString = date('Ymd');
-        $filename = 'fpdf/' . $ID_rol . $dateString . '.pdf';
+        $filename = $carpeta."/".$ID_rol . $dateString . '.pdf';
         $pdf->Output($filename, 'F');
 
     } catch (PDOException $e) {
@@ -169,26 +170,27 @@ function Cargar_Roles()
 
     $fecha_inicio = date('Ym01', strtotime('last month'));
     $fecha_fin = date('Ymt', strtotime('last month'));
+    echo $fecha_inicio;
+    echo $fecha_fin;
 
     $pdo = new PDO("sqlsrv:server=$sql_serverName;Database=$sql_database", $sql_user, $sql_pwd);
 
-    $result = $pdo->prepare("SELECT TOP 5  ID   FROM EMP_ROLES WHERE Fecha BETWEEN :fecha_inicio AND :fecha_fin");
+    $result = $pdo->prepare("SELECT TOP 5  ID   
+    FROM EMP_ROLES WHERE Fecha BETWEEN :fecha_inicio AND :fecha_fin");
 
     $result->bindParam(':fecha_inicio', $fecha_inicio);
     $result->bindParam(':fecha_fin', $fecha_fin);
 
     if ($result->execute()) {
         $datos = $result->fetchAll(PDO::FETCH_ASSOC);
+        echo "<pre>";
         var_dump($datos);
+        echo "</pre>";
+
+        
 
         for ($i = 0; $i < 5; $i++) {
-
-            Crear_PDF($datos[0]["ID"]);
-
-            echo $i;
-
-            // echo $datos[$i]["ID"];
-
+            // Crear_PDF($datos[$i]["ID"],$carpeta);
         }
         
     } else {
